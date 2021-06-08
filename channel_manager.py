@@ -2,7 +2,9 @@ import os
 import sys
 import pandas as pd
 from pathlib import Path
-from jinja2 import Environment, Template, PackageLoader, select_autoescape
+
+import click
+from jinja2 import Template
 
 from slack_sdk import WebClient
 from slack_sdk.errors import SlackApiError
@@ -48,29 +50,34 @@ def find_or_create_channel(channels, channel_name, topic=None, purpose=None, dry
 		client.conversations_setTopic(channel=channel['id'], topic=topic)
 	return channel, action
 
-def create_channels_from_csv(input_csv_path = 'channels.csv', dry_run = False):
-  if not Path(input_csv_path).exists():
-    print(f"Missing file: {input_csv_path}", file=sys.stderr)
-    sys.exit(1)
-
+@click.command()
+@click.argument('csv_path', default='channels.csv', type=click.File())
+@click.argument('output_csv', default='channel-ids.csv', type=click.Path())
+@click.option('--dry-run/--no-dry-run', default=False)
+def create_channels_from_csv(csv_path, output_csv, dry_run = False):
   channels = list_channels()
-
-  channels_df = pd.read_csv(input_csv_path)
+  channels_df = pd.read_csv(csv_path)
   if 'Name' not in channels_df.columns:
     print("CSV file requires a Name column", file=sys.stderr)
     sys.exit(1)
 
   for _, row in channels_df.iterrows():
     channel_name = row['Name']
-    channel, action = find_or_create_channel(channels, channel_name,
+    channel, action = find_or_create_channel(
+      channels, channel_name,
       purpose=row.get('Purpose', None),
       topic=row.get('Topic', None),
       dry_run=dry_run)
     print(f"{action} {channel_name}")
 
-  write_channels_csv()
+  write_channels_csv(output_csv)
 
-def write_channels_csv(output_csv_path = 'channel-ids.csv'):
+@click.command()
+@click.argument('csv_output', default='channel-ids.csv', type=click.Path())
+def write_csv(csv_output):
+  write_channels_csv(csv_output)
+
+def write_channels_csv(csv_output): 
   channel_ids_df = pd.DataFrame([], columns=['Name', 'Id', 'Topic', 'Purpose', 'Members', 'Archived'])
   for channel in list_channels():
     channel_ids_df = channel_ids_df.append(
@@ -84,18 +91,26 @@ def write_channels_csv(output_csv_path = 'channel-ids.csv'):
         }, ignore_index=True)
 
   channel_ids_df.sort_values(by=['Name'], inplace=True)
-  with open(output_csv_path, 'w') as f:
+  with open(csv_output, 'w') as f:
     f.write(channel_ids_df.to_csv(index=False))
 
-  print(f"Wrote channel information to {output_csv_path}")
+  print(f"Wrote channel information to {csv_output}")
 
-def send_template_messages(input_csv_path = 'channels.csv', dry_run = False):
+@click.command()
+@click.argument('csv_path', default='channels.csv', type=click.File())
+@click.option('--dry-run/--no-dry-run', default=False)
+def send_template_messages(csv_path, dry_run = False):
   template = Template(Path("template-example.jinja").read_text())
 
-  channels_df = pd.read_csv(input_csv_path)
+  channels_df = pd.read_csv(csv_path)
   channels_df.rename(columns = {k: k.replace(' ', '_') for k in channels_df.columns}, inplace = True)
   channels = list_channels()
   for _, row in channels_df.iterrows():
     channel = next(c for c in channels if c['name'] == row.Name)
-    client.chat_postMessage(channel=channel['id'], text=template.render(row))
-    print(f"Posted to {channel['name']}")
+    text = template.render(row)
+    if dry_run:
+      print(f"Post to {channel['name']}:")
+      print(text)
+    else:
+      client.chat_postMessage(channel=channel['id'], text=text)
+      print(f"Posted to {channel['name']}")
