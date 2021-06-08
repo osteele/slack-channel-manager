@@ -1,7 +1,5 @@
 import os
-import logging
 import sys
-from time import time
 import pandas as pd
 
 from slack_sdk import WebClient
@@ -10,10 +8,7 @@ from slack_sdk.errors import SlackApiError
 input_csv_path = 'channels.csv'
 output_csv_path = 'channel-ids.csv'
 
-#logging.basicConfig(level=logging.DEBUG)
-
 client = WebClient(token=os.environ["SLACK_OAUTH_TOKEN"])
-
 
 def list_channels():
 	channels = []
@@ -27,12 +22,14 @@ def list_channels():
 	return channels
 
 
-def find_or_create_channel(channel_name, topic=None, purpose=None):
+def find_or_create_channel(channels, channel_name, topic=None, purpose=None, dry_run=False):
 	action = 'Found'
 	channel = next((c for c in channels if c['name'] == channel_name), None)
 	if not channel:
 		action = 'Created'
 		try:
+			if dry_run:
+				return {'name': channel_name, 'id': '12345'}, action
 			response = client.conversations_create(name=channel_name)
 			channel = response['channel']
 		except SlackApiError as e:
@@ -46,33 +43,37 @@ def find_or_create_channel(channel_name, topic=None, purpose=None):
 		client.conversations_setTopic(channel=channel['id'], topic=topic)
 	return channel, action
 
+def create_channels_from_csv():
+  dry_run = False
+  channels = list_channels()
 
-channels = list_channels()
+  channels_pd = pd.read_csv(input_csv_path)
+  if 'Name' not in channels_pd.columns:
+    print("CSV file requires a Name column")
+    sys.exit(1)
 
-# name: test-channel
-# id: C)248EG11HR
-# invitation: https://join.slack.com/share/zt-rd66bdz7-Y5_XAbK2I34hSu7wBsMC4w
+  for _, row in channels_pd.iterrows():
+    channel_name = row['Name']
+    channel, action = find_or_create_channel(channels, channel_name,
+      purpose=row.get('Purpose'),
+      topic=row.get('Topic'),
+      dry_run=dry_run)
+    print(f"{action} {channel_name}")
 
-channels_pd = pd.read_csv(input_csv_path)
-if 'Name' not in channels_pd.columns:
-	print("CSV file requires a Name column")
-	sys.exit(1)
+  write_channels_csv()
 
-channel_ids_df = pd.DataFrame([], columns=['Name', 'ID'])
+def write_channels_csv():
+  channel_ids_df = pd.DataFrame([], columns=['Name', 'Id', 'Topic', 'Purpose'])
+  for channel in list_channels():
+    channel_ids_df = channel_ids_df.append(
+        {
+            'Name': channel['name'],
+            'Id': channel['id'],
+            'Topic': channel['topic']['value'],
+            'Purpose': channel['purpose']['value'],
+        }, ignore_index=True)
 
-for _, row in channels_pd.iterrows():
-	channel_name = row['Name']
-	channel, action = find_or_create_channel(channel_name,
-	                                         purpose=row.get('Purpose'),
-	                                         topic=row.get('Topic'))
-	channel_ids_df = channel_ids_df.append(
-	    {
-	        'Name': channel_name,
-	        'ID': channel['id']
-	    }, ignore_index=True)
-	print(f"{action} {channel_name}")
+  with open(output_csv_path, 'w') as f:
+    f.write(channel_ids_df.to_csv(index=False))
 
-with open(output_csv_path, 'w') as f:
-	f.write(channel_ids_df.to_csv(index=False))
-
-print(f"Wrote channel ids to {output_csv_path}")
+  print(f"Wrote channel information to {output_csv_path}")

@@ -1,15 +1,17 @@
 [tool.poetry]
-name = "slack-channel-munger"
+name = "create_channels"
 version = "0.1.0"
 description = ""
 authors = ["Oliver Steele <steele@osteele.com>"]
 
 [tool.poetry.scripts]
-my-script = "slack_channel_munger:main"
+create_channels = "create_channels:create_channels_from_csv"
+create_csv = "create_channels:write_channels_csv"
 
 [tool.poetry.dependencies]
 python = "^3.8"
 slack-sdk = "^3.6.0"
+pandas = "^1.2.4"
 
 [tool.poetry.dev-dependencies]
 
