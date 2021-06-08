@@ -55,8 +55,8 @@ def create_channels_from_csv():
   for _, row in channels_pd.iterrows():
     channel_name = row['Name']
     channel, action = find_or_create_channel(channels, channel_name,
-      purpose=row.get('Purpose'),
-      topic=row.get('Topic'),
+      purpose=row.get('Purpose', None),
+      topic=row.get('Topic', None),
       dry_run=dry_run)
     print(f"{action} {channel_name}")
 
