@@ -1,6 +1,7 @@
 import os
 import sys
 import pandas as pd
+from pathlib import Path
 
 from slack_sdk import WebClient
 from slack_sdk.errors import SlackApiError
@@ -8,7 +9,7 @@ from slack_sdk.errors import SlackApiError
 try:
   SLACK_OAUTH_TOKEN = os.environ["SLACK_OAUTH_TOKEN"]
 except KeyError:
-  print("Consult the README for instructions on how to create a SLACK_OAUTH_TOKEN token", file=sys.stderr)
+  print("Error: SLACK_OAUTH_TOKEN is not defined. See the README for installation instructions.", file=sys.stderr)
   sys.exit(1)
 
 client = WebClient(token=SLACK_OAUTH_TOKEN)
@@ -47,6 +48,10 @@ def find_or_create_channel(channels, channel_name, topic=None, purpose=None, dry
 	return channel, action
 
 def create_channels_from_csv(input_csv_path = 'channels.csv', dry_run = False):
+  if not Path(input_csv_path).exists():
+    print(f"Missing file: {input_csv_path}", file=sys.stderr)
+    sys.exit(1)
+
   channels = list_channels()
 
   channels_pd = pd.read_csv(input_csv_path)
