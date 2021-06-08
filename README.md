@@ -26,7 +26,7 @@ See the documentation for “Listing Channel IDs", below, for additional documen
 
 ### Listing Channel IDs
 
-Run  to write a list of all a workspace's public channels to `channel-ids.csv`.
+Run to write a list of all a workspace's public channels to `channel-ids.csv`.
 
 ```sh
 poetry install --no-root
