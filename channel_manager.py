@@ -63,13 +63,15 @@ def create_channels_from_csv():
   write_channels_csv()
 
 def write_channels_csv():
-  channel_ids_df = pd.DataFrame([], columns=['Name', 'Id', 'Topic', 'Purpose'])
+  channel_ids_df = pd.DataFrame([], columns=['Name', 'Id', 'Topic', 'Purpose', 'Members', 'Archived'])
   for channel in list_channels():
     channel_ids_df = channel_ids_df.append(
         {
             'Name': channel['name'],
             'Id': channel['id'],
+            'Archived': channel['is_archived'],
             'Topic': channel['topic']['value'],
+            'Members': channel['num_members'],
             'Purpose': channel['purpose']['value'],
         }, ignore_index=True)
 
