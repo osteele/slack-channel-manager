@@ -5,9 +5,6 @@ import pandas as pd
 from slack_sdk import WebClient
 from slack_sdk.errors import SlackApiError
 
-input_csv_path = 'channels.csv'
-output_csv_path = 'channel-ids.csv'
-
 client = WebClient(token=os.environ["SLACK_OAUTH_TOKEN"])
 
 def list_channels():
@@ -43,8 +40,7 @@ def find_or_create_channel(channels, channel_name, topic=None, purpose=None, dry
 		client.conversations_setTopic(channel=channel['id'], topic=topic)
 	return channel, action
 
-def create_channels_from_csv():
-  dry_run = False
+def create_channels_from_csv(input_csv_path = 'channels.csv', dry_run = False):
   channels = list_channels()
 
   channels_pd = pd.read_csv(input_csv_path)
@@ -62,7 +58,7 @@ def create_channels_from_csv():
 
   write_channels_csv()
 
-def write_channels_csv():
+def write_channels_csv(output_csv_path = 'channel-ids.csv'):
   channel_ids_df = pd.DataFrame([], columns=['Name', 'Id', 'Topic', 'Purpose', 'Members', 'Archived'])
   for channel in list_channels():
     channel_ids_df = channel_ids_df.append(
@@ -75,6 +71,7 @@ def write_channels_csv():
             'Purpose': channel['purpose']['value'],
         }, ignore_index=True)
 
+  channel_ids_df.sort_values(by=['Name'], inplace=True)
   with open(output_csv_path, 'w') as f:
     f.write(channel_ids_df.to_csv(index=False))
 
