@@ -5,7 +5,13 @@ import pandas as pd
 from slack_sdk import WebClient
 from slack_sdk.errors import SlackApiError
 
-client = WebClient(token=os.environ["SLACK_OAUTH_TOKEN"])
+try:
+  SLACK_OAUTH_TOKEN = os.environ["SLACK_OAUTH_TOKEN"]
+except KeyError:
+  print("Consult the README for instructions on how to create a SLACK_OAUTH_TOKEN token", file=sys.stderr)
+  sys.exit(1)
+
+client = WebClient(token=SLACK_OAUTH_TOKEN)
 
 def list_channels():
 	channels = []
@@ -30,7 +36,7 @@ def find_or_create_channel(channels, channel_name, topic=None, purpose=None, dry
 			response = client.conversations_create(name=channel_name)
 			channel = response['channel']
 		except SlackApiError as e:
-			print("Error creating conversation: {}".format(e))
+			print(f"Error creating conversation: {e}", file=sys.stderr)
 			sys.exit(1)
 	if purpose and channel['purpose']['value'] != purpose:
 		print(f"Update {channel['name']} purpose to {purpose}")
@@ -45,7 +51,7 @@ def create_channels_from_csv(input_csv_path = 'channels.csv', dry_run = False):
 
   channels_pd = pd.read_csv(input_csv_path)
   if 'Name' not in channels_pd.columns:
-    print("CSV file requires a Name column")
+    print("CSV file requires a Name column", file=sys.stderr)
     sys.exit(1)
 
   for _, row in channels_pd.iterrows():

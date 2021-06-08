@@ -1,0 +1,3 @@
+language = "python3"
+run = "poetry run write_csv"
+onBoot = "poetry install --no-root"
