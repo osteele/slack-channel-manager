@@ -42,6 +42,8 @@ def find_or_create_channel(channels, channel_name, topic=None, purpose=None, dry
 		except SlackApiError as e:
 			print(f"Error creating conversation: {e}", file=sys.stderr)
 			sys.exit(1)
+	# print(channel)
+	client.conversations_join(channel=channel['id'])
 	if purpose and channel['purpose']['value'] != purpose:
 		print(f"Update {channel['name']} purpose to {purpose}")
 		client.conversations_setPurpose(channel=channel['id'], purpose=purpose)
