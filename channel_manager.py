@@ -2,6 +2,7 @@ import os
 import sys
 import pandas as pd
 from pathlib import Path
+from jinja2 import Environment, Template, PackageLoader, select_autoescape
 
 from slack_sdk import WebClient
 from slack_sdk.errors import SlackApiError
@@ -54,12 +55,12 @@ def create_channels_from_csv(input_csv_path = 'channels.csv', dry_run = False):
 
   channels = list_channels()
 
-  channels_pd = pd.read_csv(input_csv_path)
-  if 'Name' not in channels_pd.columns:
+  channels_df = pd.read_csv(input_csv_path)
+  if 'Name' not in channels_df.columns:
     print("CSV file requires a Name column", file=sys.stderr)
     sys.exit(1)
 
-  for _, row in channels_pd.iterrows():
+  for _, row in channels_df.iterrows():
     channel_name = row['Name']
     channel, action = find_or_create_channel(channels, channel_name,
       purpose=row.get('Purpose', None),
@@ -87,3 +88,14 @@ def write_channels_csv(output_csv_path = 'channel-ids.csv'):
     f.write(channel_ids_df.to_csv(index=False))
 
   print(f"Wrote channel information to {output_csv_path}")
+
+def send_template_messages(input_csv_path = 'channels.csv', dry_run = False):
+  template = Template(Path("template-example.jinja").read_text())
+
+  channels_df = pd.read_csv(input_csv_path)
+  channels_df.rename(columns = {k: k.replace(' ', '_') for k in channels_df.columns}, inplace = True)
+  channels = list_channels()
+  for _, row in channels_df.iterrows():
+    channel = next(c for c in channels if c['name'] == row.Name)
+    client.chat_postMessage(channel=channel['id'], text=template.render(row))
+    print(f"Posted to {channel['name']}")
