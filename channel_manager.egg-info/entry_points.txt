@@ -1,0 +1,4 @@
+[console_scripts]
+create_channels = channel_manager:create_channels_from_csv
+write_csv = channel_manager:write_channels_csv
+
