@@ -1,9 +1,0 @@
-README.md
-channel_manager.py
-setup.py
-channel_manager.egg-info/PKG-INFO
-channel_manager.egg-info/SOURCES.txt
-channel_manager.egg-info/dependency_links.txt
-channel_manager.egg-info/entry_points.txt
-channel_manager.egg-info/requires.txt
-channel_manager.egg-info/top_level.txt
