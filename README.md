@@ -37,13 +37,15 @@ This file has columns "Name", "Id", "Topic", "Purpose", and "Archived".
 
 The ids in this column can be used as direct link URLs to the channels. For example, if the workspace is named `example-space` and a channel has an id `C3D404E10ED`, this id can be used in the URL for a direct link: `https://example-space.slack.com/archives/C3D404E10ED`.
 
-### Bulk Messages
+### Bulk Message Posting
 
-Send a parameterized message to each channels listed in a CSV file.
+This feature sends a parameterized message to each channels that is listed in a CSV file. The CSV file should contain at least a Name column, that lists the names of Slack channels. It may contain other columns, that are used in the template text.
 
 ```sh
 poetry install --no-root
 poetry run send_template_messages channels.csv template.jinja
 ```
 
-The template file uses the [Jinja template format](https://jinja.palletsprojects.com/en/3.0.x/templates/). Template variables refer to cells in the CSV file, except that the spaces in the column names are replaced by underscores.
+The template file uses the [Jinja template format](https://jinja.palletsprojects.com/en/3.0.x/templates/). Template variables refer to cells in the CSV file, except that the spaces in the column names are replaced by underscores. For example, if the CSV contains a column named `Zoom URL`, the template may refer to it as `{{ Zoom_URL }}`. See `template-example.jinja` for an example.
+
+Messages are posted as [Markdown](https://www.markdownguide.org/tools/slack/).
