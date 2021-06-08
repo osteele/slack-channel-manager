@@ -98,10 +98,10 @@ def write_channels_csv(csv_output):
 
 @click.command()
 @click.argument('csv_path', default='channels.csv', type=click.File())
+@click.argument('template_path', type=click.File())
 @click.option('--dry-run/--no-dry-run', default=False)
-def send_template_messages(csv_path, dry_run = False):
-  template = Template(Path("template-example.jinja").read_text())
-
+def send_template_messages(csv_path, template_path, dry_run = False):
+  template = Template(template_path.read())
   channels_df = pd.read_csv(csv_path)
   channels_df.rename(columns = {k: k.replace(' ', '_') for k in channels_df.columns}, inplace = True)
   channels = list_channels()

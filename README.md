@@ -36,3 +36,14 @@ poetry run write_csv
 This file has columns "Name", "Id", "Topic", "Purpose", and "Archived".
 
 The ids in this column can be used as direct link URLs to the channels. For example, if the workspace is named `example-space` and a channel has an id `C3D404E10ED`, this id can be used in the URL for a direct link: `https://example-space.slack.com/archives/C3D404E10ED`.
+
+### Bulk Messages
+
+Send a parameterized message to each channels listed in a CSV file.
+
+```sh
+poetry install --no-root
+poetry run send_template_messages channels.csv template.jinja
+```
+
+The template file uses the [Jinja template format](https://jinja.palletsprojects.com/en/3.0.x/templates/). Template variables refer to cells in the CSV file, except that the spaces in the column names are replaced by underscores.
