@@ -4,7 +4,7 @@
 
 1. On the [Slack app management page](https://api.slack.com/apps), create a
    Slack application with these scopes: `channels:read`, `channels:write`,
-   `groups:read`, `groups:write`, `im:read`, `mpim:read`. Install the
+   `groups:read`, `groups:write`, `im:read`, `mpim:read`, `chat:write`, `pins:write`. Install the
    application in the workspace.
 
 2. Set the `SLACK_OAUTH_TOKEN` environment variable to the value of the User
@@ -59,7 +59,7 @@ names of Slack channels. It may contain other columns, that are used in the
 template text. See the files in `examples` for an example.
 
 ```sh
-poetry run send_template_messages channels.csv template.jinja
+poetry run post_messages channels.csv template.jinja
 ```
 
 The template file uses the [Jinja template

@@ -1,7 +1,6 @@
 import os
 import sys
 import pandas as pd
-from pathlib import Path
 
 import click
 from jinja2 import Template
@@ -117,7 +116,8 @@ def write_channels_csv(csv_output):
 @click.argument('csv_path', default='channels.csv', type=click.File())
 @click.argument('template_path', type=click.File())
 @click.option('--dry-run/--no-dry-run', default=False)
-def send_template_messages(csv_path, template_path, dry_run = False):
+@click.option('--pin/--no-pin', default=False)
+def post_messages(csv_path, template_path, dry_run, pin):
   template = Template(template_path.read())
   channels_df = pd.read_csv(csv_path)
   channels_df.rename(columns = {k: k.replace(' ', '_') for k in channels_df.columns}, inplace = True)
@@ -129,5 +129,7 @@ def send_template_messages(csv_path, template_path, dry_run = False):
       print(f"Post to {channel['name']}:")
       print(text)
     else:
-      client.chat_postMessage(channel=channel['id'], text=text)
+      response = client.chat_postMessage(channel=channel['id'], text=text)
       print(f"Posted to {channel['name']}")
+      if pin:
+        client.pins_add(channel=channel['id'], timestamp=response['ts'])

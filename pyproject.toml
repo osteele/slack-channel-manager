@@ -7,7 +7,7 @@ authors = ["Oliver Steele <steele@osteele.com>"]
 [tool.poetry.scripts]
 create_channels = "channel_manager:create_channels_from_csv"
 write_csv = "channel_manager:write_csv"
-send_template_messages = "channel_manager:send_template_messages"
+post_messages = "channel_manager:post_messages"
 
 [tool.poetry.dependencies]
 python = "^3.8"
