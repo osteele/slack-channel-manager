@@ -9,11 +9,14 @@ from jinja2 import Template
 from slack_sdk import WebClient
 from slack_sdk.errors import SlackApiError
 
+def die(message):
+	print(message, file=sys.stderr)
+	sys.exit(1)
+
 try:
   SLACK_OAUTH_TOKEN = os.environ["SLACK_OAUTH_TOKEN"]
 except KeyError:
-  print("Error: SLACK_OAUTH_TOKEN is not defined. See the README for installation instructions.", file=sys.stderr)
-  sys.exit(1)
+  die("Error: SLACK_OAUTH_TOKEN is not defined. See the README for installation instructions.")
 
 client = WebClient(token=SLACK_OAUTH_TOKEN)
 
@@ -40,8 +43,7 @@ def find_or_create_channel(channels, channel_name, topic=None, purpose=None, dry
 			response = client.conversations_create(name=channel_name)
 			channel = response['channel']
 		except SlackApiError as e:
-			print(f"Error creating conversation: {e}", file=sys.stderr)
-			sys.exit(1)
+			die(f"Error creating conversation: {e}")
 	# print(channel)
 	client.conversations_join(channel=channel['id'])
 	if purpose and channel['purpose']['value'] != purpose:
@@ -60,8 +62,7 @@ def create_channels_from_csv(csv_path, output_csv, dry_run = False):
   channels = list_channels()
   channels_df = pd.read_csv(csv_path)
   if 'Name' not in channels_df.columns:
-    print("CSV file requires a Name column", file=sys.stderr)
-    sys.exit(1)
+    die("CSV file requires a Name column")
 
   for _, row in channels_df.iterrows():
     channel_name = row['Name']
@@ -79,17 +80,17 @@ def create_channels_from_csv(csv_path, output_csv, dry_run = False):
 def write_csv(csv_output):
   write_channels_csv(csv_output)
 
-def write_channels_csv(csv_output): 
+def write_channels_csv(csv_output):
   channel_ids_df = pd.DataFrame([], columns=['Name', 'Id', 'Topic', 'Purpose', 'Members', 'Archived'])
   for channel in list_channels():
     channel_ids_df = channel_ids_df.append(
         {
-            'Name': channel['name'],
-            'Id': channel['id'],
-            'Archived': channel['is_archived'],
-            'Topic': channel['topic']['value'],
-            'Members': channel['num_members'],
-            'Purpose': channel['purpose']['value'],
+					'Name': channel['name'],
+					'Id': channel['id'],
+					'Archived': channel['is_archived'],
+					'Topic': channel['topic']['value'],
+					'Members': channel['num_members'],
+					'Purpose': channel['purpose']['value'],
         }, ignore_index=True)
 
   channel_ids_df.sort_values(by=['Name'], inplace=True)
