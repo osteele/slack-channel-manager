@@ -21,6 +21,7 @@ except KeyError:
 client = WebClient(token=SLACK_OAUTH_TOKEN)
 
 def list_channels():
+	"""Return a list of channels, following pagination."""
 	channels = []
 	next_cursor = None
 	while True:
@@ -32,26 +33,37 @@ def list_channels():
 	return channels
 
 
-def find_or_create_channel(channels, channel_name, topic=None, purpose=None, dry_run=False, join=True):
+def create_or_update_channel(channels, channel_name, topic=None, purpose=None, dry_run=False, join=True):
 	action = 'Found'
 	channel = next((c for c in channels if c['name'] == channel_name), None)
 	if not channel:
 		action = 'Created'
 		try:
 			if dry_run:
-				return {'name': channel_name, 'id': '12345'}, action
-			response = client.conversations_create(name=channel_name)
-			channel = response['channel']
+				channel = {
+					'name': channel_name,
+					'id': 'C3D404E10ED',
+					purpose: {'value': ''},
+					topic: {'value': ''},
+				}
+			else:
+				response = client.conversations_create(name=channel_name)
+				channel = response['channel']
 		except SlackApiError as e:
 			die(f"Error creating conversation: {e}")
 	if join:
-		client.conversations_join(channel=channel['id'])
+		if dry_run:
+			print(f"Join {channel_name}")
+		else:
+			client.conversations_join(channel=channel['id'])
 	if purpose and channel['purpose']['value'] != purpose:
-		print(f"Update {channel['name']} purpose to {purpose}")
-		client.conversations_setPurpose(channel=channel['id'], purpose=purpose)
+		print(f"Update {channel_name} purpose to {purpose}")
+		if not dry_run:
+			client.conversations_setPurpose(channel=channel['id'], purpose=purpose)
 	if topic and channel['topic']['value'] != topic:
-		print(f"Update {channel['name']} topic to {topic}")
-		client.conversations_setTopic(channel=channel['id'], topic=topic)
+		print(f"Update {channel_name} topic to {topic}")
+		if not dry_run:
+			client.conversations_setTopic(channel=channel['id'], topic=topic)
 	return channel, action
 
 @click.command()
@@ -67,7 +79,7 @@ def create_channels_from_csv(csv_path, output_csv, dry_run, join):
 
   for _, row in channels_df.iterrows():
     channel_name = row['Name']
-    channel, action = find_or_create_channel(
+    _, action = create_or_update_channel(
       channels, channel_name,
       purpose=row.get('Purpose', None),
       topic=row.get('Topic', None),

@@ -34,7 +34,7 @@ The IDs of created channels (and all other channels) are written to
 additional documentation about this file.
 
 The `--dry-run` option previews the channel creation actions without executing
-them. (It currently does set the topic and purpose of existing channels.)
+them.
 
 ### Listing Channel IDs
 
