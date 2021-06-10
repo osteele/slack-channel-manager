@@ -32,7 +32,7 @@ def list_channels():
 	return channels
 
 
-def find_or_create_channel(channels, channel_name, topic=None, purpose=None, dry_run=False):
+def find_or_create_channel(channels, channel_name, topic=None, purpose=None, dry_run=False, join=True):
 	action = 'Found'
 	channel = next((c for c in channels if c['name'] == channel_name), None)
 	if not channel:
@@ -44,8 +44,8 @@ def find_or_create_channel(channels, channel_name, topic=None, purpose=None, dry
 			channel = response['channel']
 		except SlackApiError as e:
 			die(f"Error creating conversation: {e}")
-	# print(channel)
-	client.conversations_join(channel=channel['id'])
+	if join:
+		client.conversations_join(channel=channel['id'])
 	if purpose and channel['purpose']['value'] != purpose:
 		print(f"Update {channel['name']} purpose to {purpose}")
 		client.conversations_setPurpose(channel=channel['id'], purpose=purpose)
@@ -58,7 +58,8 @@ def find_or_create_channel(channels, channel_name, topic=None, purpose=None, dry
 @click.argument('csv_path', default='channels.csv', type=click.File())
 @click.argument('output_csv', default='channel-ids.csv', type=click.Path())
 @click.option('--dry-run/--no-dry-run', default=False)
-def create_channels_from_csv(csv_path, output_csv, dry_run = False):
+@click.option('--join/--no-join', default=True)
+def create_channels_from_csv(csv_path, output_csv, dry_run, join):
   channels = list_channels()
   channels_df = pd.read_csv(csv_path)
   if 'Name' not in channels_df.columns:
@@ -70,7 +71,8 @@ def create_channels_from_csv(csv_path, output_csv, dry_run = False):
       channels, channel_name,
       purpose=row.get('Purpose', None),
       topic=row.get('Topic', None),
-      dry_run=dry_run)
+      dry_run=dry_run,
+			join=join)
     print(f"{action} {channel_name}")
 
   write_channels_csv(output_csv)
