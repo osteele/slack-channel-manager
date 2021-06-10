@@ -8,6 +8,7 @@ from jinja2 import Template
 from slack_sdk import WebClient
 from slack_sdk.errors import SlackApiError
 
+
 def die(message):
 	print(message, file=sys.stderr)
 	sys.exit(1)
@@ -18,6 +19,7 @@ except KeyError:
   die("Error: SLACK_OAUTH_TOKEN is not defined. See the README for installation instructions.")
 
 client = WebClient(token=SLACK_OAUTH_TOKEN)
+
 
 def list_channels():
 	"""Return a list of channels, following pagination."""
@@ -65,6 +67,7 @@ def create_or_update_channel(channels, channel_name, topic=None, purpose=None, d
 			client.conversations_setTopic(channel=channel['id'], topic=topic)
 	return channel, action
 
+
 @click.command()
 @click.argument('csv_path', default='channels.csv', type=click.File())
 @click.argument('output_csv', default='channel-ids.csv', type=click.Path())
@@ -93,24 +96,26 @@ def create_channels_from_csv(csv_path, output_csv, dry_run, join):
 def write_csv(csv_output):
   write_channels_csv(csv_output)
 
+
 def write_channels_csv(csv_output):
-  channel_ids_df = pd.DataFrame([], columns=['Name', 'Id', 'Topic', 'Purpose', 'Members', 'Archived'])
+  rows = []
   for channel in list_channels():
-    channel_ids_df = channel_ids_df.append(
-        {
-					'Name': channel['name'],
-					'Id': channel['id'],
-					'Archived': channel['is_archived'],
-					'Topic': channel['topic']['value'],
-					'Members': channel['num_members'],
-					'Purpose': channel['purpose']['value'],
-        }, ignore_index=True)
+    rows.append(
+      {
+        'Name': channel['name'],
+        'Id': channel['id'],
+        'Topic': channel['topic']['value'],
+        'Purpose': channel['purpose']['value'],
+        'Members': channel['num_members'],
+        'Archived': channel['is_archived'],
+      })
 
-  channel_ids_df.sort_values(by=['Name'], inplace=True)
+  df = pd.DataFrame(rows)
+  df.sort_values(by=['Name'], inplace=True)
   with open(csv_output, 'w') as f:
-    f.write(channel_ids_df.to_csv(index=False))
-
+    f.write(df.to_csv(index=False))
   print(f"Wrote channel information to {csv_output}")
+
 
 @click.command()
 @click.argument('csv_path', default='channels.csv', type=click.File())
@@ -118,10 +123,14 @@ def write_channels_csv(csv_output):
 @click.option('--dry-run/--no-dry-run', default=False)
 @click.option('--pin/--no-pin', default=False)
 def post_messages(csv_path, template_path, dry_run, pin):
-  template = Template(template_path.read())
   channels_df = pd.read_csv(csv_path)
+  if 'Name' not in channels_df.columns:
+    die("CSV file requires a Name column")
   channels_df.rename(columns = {k: k.replace(' ', '_') for k in channels_df.columns}, inplace = True)
+
+  template = Template(template_path.read())
   channels = list_channels()
+  
   for _, row in channels_df.iterrows():
     channel = next(c for c in channels if c['name'] == row.Name)
     text = template.render(row)
