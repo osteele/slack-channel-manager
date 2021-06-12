@@ -3,6 +3,7 @@ import sys
 import pandas as pd
 import csv
 import time
+from pathlib import Path
 
 import click
 from jinja2 import Template
@@ -36,11 +37,13 @@ def list_channels():
 	return channels
 
 
-def create_or_update_channel(channels, channel_name, topic=None, purpose=None, dry_run=False, join=True):
+def create_or_update_channel(channels, channel_name, topic=None, purpose=None, dry_run=False, private=False, join=True):
 	action = 'Found'
 	channel = next((c for c in channels if c['name'] == channel_name), None)
 	if not channel:
 		action = 'Created'
+		if private:
+			action += ' private'
 		try:
 			if dry_run:
 				channel = {
@@ -50,7 +53,7 @@ def create_or_update_channel(channels, channel_name, topic=None, purpose=None, d
 					topic: {'value': ''},
 				}
 			else:
-				response = client.conversations_create(name=channel_name)
+				response = client.conversations_create(name=channel_name, private=private)
 				channel = response['channel']
 		except SlackApiError as e:
 			die(f"Error creating conversation: {e}")
@@ -59,10 +62,10 @@ def create_or_update_channel(channels, channel_name, topic=None, purpose=None, d
 			print(f"Join {channel_name}")
 		else:
 			client.conversations_join(channel=channel['id'])
-	# if purpose and channel['purpose']['value'] != purpose:
-	# 	print(f"Update {channel_name} purpose to {purpose}")
-	# 	if not dry_run:
-	# 		client.conversations_setPurpose(channel=channel['id'], purpose=purpose)
+	if purpose and channel['purpose']['value'] != purpose:
+		print(f"Update {channel_name} purpose to {purpose}")
+		if not dry_run:
+			client.conversations_setPurpose(channel=channel['id'], purpose=purpose)
 	if topic and channel['topic']['value'] != topic:
 		print(f"Update {channel_name} topic to {topic}")
 		if not dry_run:
@@ -75,8 +78,11 @@ def create_or_update_channel(channels, channel_name, topic=None, purpose=None, d
 @click.argument('output_csv', default='channel-ids.csv', type=click.Path())
 @click.option('--dry-run/--no-dry-run', default=False)
 @click.option('--join/--no-join', default=True)
-def create_channels_from_csv(csv_path, output_csv, dry_run, join):
+@click.option('--private/--public', default=False)
+def create_channels_from_csv(csv_path, output_csv, dry_run, private, join):
   channels = list_channels()
+  if csv_path.name.endswith('.url'):
+    csv_path = csv_path.read()
   channels_df = pd.read_csv(csv_path)
   if 'Name' not in channels_df.columns:
     die("CSV file requires a Name column")
@@ -88,6 +94,7 @@ def create_channels_from_csv(csv_path, output_csv, dry_run, join):
       purpose=row.get('Purpose', None),
       topic=row.get('Topic', None),
       dry_run=dry_run,
+      private=private,
 			join=join)
     print(f"{action} {channel_name}")
 
