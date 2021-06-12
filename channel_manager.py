@@ -24,12 +24,12 @@ except KeyError:
 client = WebClient(token=SLACK_OAUTH_TOKEN)
 
 
-def list_channels():
+def list_channels(types='public_channel,private_channel'):
 	"""Return a list of channels, following pagination."""
 	channels = []
 	next_cursor = None
 	while True:
-		response = client.conversations_list(limit=1000, cursor=next_cursor)
+		response = client.conversations_list(types=types, limit=1000, cursor=next_cursor)
 		channels += response['channels']
 		next_cursor = response['response_metadata']['next_cursor']
 		if not next_cursor:
@@ -37,12 +37,12 @@ def list_channels():
 	return channels
 
 
-def create_or_update_channel(channels, channel_name, topic=None, purpose=None, dry_run=False, private=False, join=True):
+def create_or_update_channel(channels, channel_name, topic=None, purpose=None, dry_run=False, is_private=False, join=True):
 	action = 'Found'
 	channel = next((c for c in channels if c['name'] == channel_name), None)
 	if not channel:
 		action = 'Created'
-		if private:
+		if is_private:
 			action += ' private'
 		try:
 			if dry_run:
@@ -53,7 +53,7 @@ def create_or_update_channel(channels, channel_name, topic=None, purpose=None, d
 					topic: {'value': ''},
 				}
 			else:
-				response = client.conversations_create(name=channel_name, private=private)
+				response = client.conversations_create(name=channel_name, is_private=is_private)
 				channel = response['channel']
 		except SlackApiError as e:
 			die(f"Error creating conversation: {e}")
@@ -76,16 +76,19 @@ def create_or_update_channel(channels, channel_name, topic=None, purpose=None, d
 @click.command()
 @click.argument('csv_path', default='channels.csv', type=click.File())
 @click.argument('output_csv', default='channel-ids.csv', type=click.Path())
+@click.option('--limit', type=int)
 @click.option('--dry-run/--no-dry-run', default=False)
 @click.option('--join/--no-join', default=True)
 @click.option('--private/--public', default=False)
-def create_channels_from_csv(csv_path, output_csv, dry_run, private, join):
+def create_channels_from_csv(csv_path, output_csv, dry_run, private, join, limit):
   channels = list_channels()
   if csv_path.name.endswith('.url'):
     csv_path = csv_path.read()
   channels_df = pd.read_csv(csv_path)
   if 'Name' not in channels_df.columns:
     die("CSV file requires a Name column")
+  if limit:
+    channels_df.drop(channels_df.index[limit:], inplace=True)
 
   for _, row in channels_df.iterrows():
     channel_name = row['Name']
@@ -94,7 +97,7 @@ def create_channels_from_csv(csv_path, output_csv, dry_run, private, join):
       purpose=row.get('Purpose', None),
       topic=row.get('Topic', None),
       dry_run=dry_run,
-      private=private,
+      is_private=private,
 			join=join)
     print(f"{action} {channel_name}")
 
@@ -130,24 +133,31 @@ def write_channels_csv(csv_output):
 @click.argument('csv_path', default='channels.csv', type=click.File())
 @click.argument('template_path', type=click.File())
 @click.option('--dry-run/--no-dry-run', default=False)
+@click.option('--limit', type=int)
 @click.option('--pin/--no-pin', default=False)
-def post_messages(csv_path, template_path, dry_run, pin):
+def post_messages(csv_path, template_path, dry_run, limit, pin):
+  if csv_path.name.endswith('.url'):
+    csv_path = csv_path.read()
   channels_df = pd.read_csv(csv_path)
   if 'Name' not in channels_df.columns:
     die("CSV file requires a Name column")
   channels_df.rename(columns = {k: k.replace(' ', '_') for k in channels_df.columns}, inplace = True)
+  if limit:
+    channels_df.drop(channels_df.index[limit:], inplace=True)
 
   template = Template(template_path.read())
   channels = list_channels()
   
   for _, row in channels_df.iterrows():
-    channel = next(c for c in channels if c['name'] == row.Name)
+    channel = next((c for c in channels if c['name'] == row.Name), None)
+    if not channel:
+      die(f"No channel named {row.Name}")
     text = template.render(row)
     if dry_run:
       print(f"Post to {channel['name']}:")
       print(text)
     else:
-      response = client.chat_postMessage(channel=channel['id'], text=text)
+      response = client.chat_postMessage(channel=channel['id'], text=text, mrkdwn=True)
       print(f"Posted to {channel['name']}")
       if pin:
         client.pins_add(channel=channel['id'], timestamp=response['ts'])
