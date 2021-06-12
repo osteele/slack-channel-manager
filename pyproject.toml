@@ -8,6 +8,7 @@ authors = ["Oliver Steele <steele@osteele.com>"]
 create_channels = "channel_manager:create_channels_from_csv"
 write_csv = "channel_manager:write_csv"
 post_messages = "channel_manager:post_messages"
+set_pins = "channel_manager:set_pins"
 
 [tool.poetry.dependencies]
 python = "^3.8"

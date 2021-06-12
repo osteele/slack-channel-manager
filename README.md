@@ -73,6 +73,17 @@ Messages are posted as [Markdown](https://www.markdownguide.org/tools/slack/). T
 
 The `--dry-run` option previews the actions without executing them.
 
+### Set channel pins
+
+- input: a csv, each row being [`channel`, `message`]
+- This tool focuses on *one pinned item* per channel. When you set pins with it, it creates a new pinned message for new channels, and edits the pinned message for channels that it has dealt with.
+
+```sh
+poetry run set_pins to_pin.csv
+```
+
+The `--dry-run` option previews the actions without executing them.
+
 ## License
 
 MIT

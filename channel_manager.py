@@ -1,6 +1,8 @@
 import os
 import sys
 import pandas as pd
+import csv
+import time
 
 import click
 from jinja2 import Template
@@ -57,10 +59,10 @@ def create_or_update_channel(channels, channel_name, topic=None, purpose=None, d
 			print(f"Join {channel_name}")
 		else:
 			client.conversations_join(channel=channel['id'])
-	if purpose and channel['purpose']['value'] != purpose:
-		print(f"Update {channel_name} purpose to {purpose}")
-		if not dry_run:
-			client.conversations_setPurpose(channel=channel['id'], purpose=purpose)
+	# if purpose and channel['purpose']['value'] != purpose:
+	# 	print(f"Update {channel_name} purpose to {purpose}")
+	# 	if not dry_run:
+	# 		client.conversations_setPurpose(channel=channel['id'], purpose=purpose)
 	if topic and channel['topic']['value'] != topic:
 		print(f"Update {channel_name} topic to {topic}")
 		if not dry_run:
@@ -142,3 +144,43 @@ def post_messages(csv_path, template_path, dry_run, pin):
       print(f"Posted to {channel['name']}")
       if pin:
         client.pins_add(channel=channel['id'], timestamp=response['ts'])
+
+@click.command()
+@click.argument('to_pin', default='to_pin.csv')
+@click.argument('pin_lookup_path', default='pin_lookup.csv')
+@click.option('--dry-run/--no-dry-run', default=False)
+def set_pins(to_pin, pin_lookup_path, dry_run):
+  pin_lookup = {}
+
+  with open(pin_lookup_path, 'r', encoding='utf-8') as f:
+    dr = csv.DictReader(f)
+    for row in dr:
+      pin_lookup[row['channel']] = row['ts']
+  
+  with open(to_pin, 'r', encoding='utf-8') as f:
+    dr = csv.DictReader(f)
+    for row in dr:
+      channel = row['channel']
+      message = row['message']
+      if channel not in pin_lookup:
+        # pin not created
+        print('Posting to', channel, '...')
+        if not dry_run:
+          response = client.chat_postMessage(channel=channel, text=message)
+          ts = response['ts']
+          pin_lookup[channel] = ts
+          print('Pinning...')
+          client.pins_add(channel=channel, timestamp=ts)
+      else:
+        ts = pin_lookup[channel]
+        print('Editting', channel, ts, '...')
+        if not dry_run:
+          response = client.chat_update(channel=channel, ts=ts, text=message)
+      time.sleep(.2) # to prevent rate limiting
+
+  print('Updating', pin_lookup_path, '...')
+  with open(pin_lookup_path, 'w', encoding='utf-8', newline='') as f:
+    c = csv.writer(f)
+    c.writerow(['channel', 'ts'])
+    c.writerows([*pin_lookup.items()])
+  print('ok')
