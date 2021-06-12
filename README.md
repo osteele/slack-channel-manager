@@ -84,6 +84,18 @@ poetry run set_pins to_pin.csv
 
 The `--dry-run` option previews the actions without executing them.
 
+### Add Channel Members
+
+```sh
+poetry run add_channel_members CSV_FILE
+```
+
+CSV_FILE should be the path to a CSV file whose columns are Member, and a column for each channel name.
+
+Member should be in the form `User Name <user@host.com>`.
+
+The cell at the intersection of a member's row, and a channel's column, contains `y` if the member should be invited to the workspace.
+
 ## License
 
 MIT

@@ -215,15 +215,21 @@ def add_channel_members(member_channels_csv, channel_limit, dry_run):
   channels = [c for cn in channel_names for c in channels if c['name'] == cn]
   if len(channels) < len(channel_names):
     print("Missing channels:", ' '.join(cn for cn in channel_names if cn not in {c['name'] for c in channels}))
-  channels_by_name = {c['name']: c for c in channels}
+  # channels_by_name = {c['name']: c for c in channels}
 
   df['Email'] = df.Member.str.extract(r'<(.+?)(?: \(i was registered.*)?>')
+  missing_emails = df[pd.isnull(df.Email)]
+  if any(missing_emails):
+    print(f"Skipping {len(missing_emails)} users with missing emails: {list(missing_emails.Member)}")
+    df.drop(df.index[pd.isnull(df.Email)], inplace=True)
 
   users_by_email = {u['profile']['email']: u
     for u in get_user_list()
     if u['profile'].get('email', None)}
   users_by_id = {u['id']: u
     for u in users_by_email.values()}
+
+  print(f"The workspace has {len(users_by_email)} members with email addresses.")
 
   # uxf = [
   #   dict(
@@ -246,24 +252,29 @@ def add_channel_members(member_channels_csv, channel_limit, dry_run):
     current_member_ids = get_conversation_members(channel['id'])
     current_member_emails = {users_by_id[uid]['profile']['email'] for uid in current_member_ids if uid in users_by_id}
     invited_member_emails = set(df[df[channel['name']] == 'y'].Email)
-    # invited_member_ids = [users_by_email[u] for u in invited_member_emails if u in users_by_email]
 
     unregistered_invitees = {u for u in invited_member_emails if u not in users_by_email}
     if unregistered_invitees:
       print('. Participants who are not in Slack:', ' '.join(unregistered_invitees))
-    
+
     # print('. Current channel members who are not in the spreadsheet', current_member_emails - invited_member_emails)
 
     could_invite = invited_member_emails - current_member_emails - unregistered_invitees
     if could_invite:
-      print('. Slack members who are not in the channel', ' '.join(could_invite))
+      print('. Slack members who are not in the channel:', ' '.join(could_invite))
+      channel_invitations.append({
+        'channel': channel,
+        'emails': could_invite
+      })
 
-
-    # print(channel['name'], target_member_emails, target_member_ids)
-  #   # print(channel['name'], member_ids)
-  #   members = [users_by_id[uid] for uid in member_ids if uid in users_by_id]
-  #   # print([u['name'] for u in members])
-  #   # print([u['profile']['email'] for u in members])
+  if channel_invitations:
+    print("Invitations:")
+    for ci in channel_invitations:
+      channel = ci['channel']
+      emails = ci['emails']
+      print(f"Inviting to {channel['name']}: {', '.join(emails)}")
+      if not dry_run:
+        client.conversations_invite(channel=channel['id'], users=','.join(users_by_email[u]['id'] for u in emails))
 
 
 def load_csv(file_or_url, limit=None, required_headers=[]):
