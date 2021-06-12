@@ -17,6 +17,13 @@
 
    `poetry install --no-root`
 
+## Commands
+
+Common to all commands:
+
+- Where the documentation specifies a CSV file, you may also supply a file whose name ends in `.url`. In this case, the content of the file should be a URL that dereferences to a CSV document.
+- `--dry-run` shows what actions would be taken, without performing these actions.
+
 ### Creating Channels
 
 1. Create a CSV file named `channels.csv`. This file must have a column named "Name", and
@@ -69,7 +76,7 @@ names are replaced by underscores. For example, if the CSV contains a column
 named `Zoom URL`, the template may refer to it as `{{ Zoom_URL }}`. See
 `examples/bulk-messaging.csv`  and examples/bulk-messaging.jinja` for an example.
 
-Messages are posted as [Markdown](https://www.markdownguide.org/tools/slack/). The template may include `*` for bullet list items, `[link](https://example.com)` for links, etc.
+Messages are formatted with Slack's [mrkdwn](https://api.slack.com/reference/surfaces/formatting#linking-urls) syntax. The template may include `*` for bullet list items, `<http://example.com>` and `<http://example.com|title>` for links, etc.
 
 The `--dry-run` option previews the actions without executing them.
 
@@ -90,9 +97,9 @@ The `--dry-run` option previews the actions without executing them.
 poetry run add_channel_members CSV_FILE
 ```
 
-CSV_FILE should be the path to a CSV file whose columns are Member, and a column for each channel name.
+CSV_FILE should be the path to a CSV file whose columns are Member or Email, and a column for each channel name.
 
-Member should be in the form `User Name <user@host.com>`.
+If Member is supplied instead of Email, it should be in the form `User Name <user@host.com>`.
 
 The cell at the intersection of a member's row, and a channel's column, contains `y` if the member should be invited to the workspace.
 
