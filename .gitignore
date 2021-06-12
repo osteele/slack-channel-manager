@@ -3,3 +3,4 @@ channel-ids.csv
 __pycache__
 *.egg-info
 conference/
+members.csv
