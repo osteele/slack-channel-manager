@@ -1,8 +1,8 @@
 import os
 
-from .utils import die
-
 from slack_sdk import WebClient
+
+from .utils import die
 
 try:
   SLACK_OAUTH_TOKEN = os.environ["SLACK_OAUTH_TOKEN"]
