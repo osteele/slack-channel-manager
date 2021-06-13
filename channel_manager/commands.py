@@ -1,39 +1,14 @@
-import os
-import sys
 import pandas as pd
 import csv
 import time
 
+from .utils import die, load_csv
+from .client import client, get_conversation_members, get_user_list, list_channels
+
 import click
 from jinja2 import Template
 
-from slack_sdk import WebClient
 from slack_sdk.errors import SlackApiError
-
-
-def die(message):
-	print(message, file=sys.stderr)
-	sys.exit(1)
-
-try:
-  SLACK_OAUTH_TOKEN = os.environ["SLACK_OAUTH_TOKEN"]
-except KeyError:
-  die("Error: SLACK_OAUTH_TOKEN is not defined. See the README for installation instructions.")
-
-client = WebClient(token=SLACK_OAUTH_TOKEN)
-
-
-def list_channels(types='public_channel,private_channel'):
-	"""Return a list of channels, following pagination."""
-	channels = []
-	next_cursor = None
-	while True:
-		response = client.conversations_list(types=types, limit=1000, cursor=next_cursor)
-		channels += response['channels']
-		next_cursor = response['response_metadata']['next_cursor']
-		if not next_cursor:
-			break
-	return channels
 
 
 def create_or_update_channel(channels, channel_name, topic=None, purpose=None, dry_run=False, is_private=False, join=True):
@@ -48,8 +23,8 @@ def create_or_update_channel(channels, channel_name, topic=None, purpose=None, d
 				channel = {
 					'name': channel_name,
 					'id': 'C3D404E10ED',
-					purpose: {'value': ''},
-					topic: {'value': ''},
+					'purpose': {'value': ''},
+					'topic': {'value': ''},
 				}
 			else:
 				response = client.conversations_create(name=channel_name, is_private=is_private)
@@ -281,39 +256,3 @@ def add_channel_members(member_channels_csv, channel_limit, dry_run):
       print(f"Inviting to {channel['name']}: {', '.join(emails)}")
       if not dry_run:
         client.conversations_invite(channel=channel['id'], users=','.join(users_by_email[u]['id'] for u in emails))
-
-
-def load_csv(file_or_url, limit=None, required_headers=[]):
-  if file_or_url.name.endswith('.url'):
-    file_or_url = file_or_url.read()
-  df = pd.read_csv(file_or_url)
-  missing_headers = [h for h in required_headers if h not in df.columns]
-  if missing_headers:
-    die(f"The following required headers were not found in {file_or_url}: {' '.join(missing_headers)}")
-  if limit:
-    df.drop(df.index[limit:], inplace=True)
-  return df
-
-
-def get_conversation_members(channel_id):
-  members = []
-  cursor = None
-  while True:
-    response = client.conversations_members(channel=channel_id, cursor=cursor, limit=100)
-    members += response['members']
-    cursor = response['response_metadata']['next_cursor']
-    if not cursor:
-      break
-  return set(members)
-
-
-def get_user_list():
-  members = []
-  cursor = None
-  while True:
-    response = client.users_list(cursor=cursor, limit=100)
-    members += response['members']
-    cursor = response['response_metadata']['next_cursor']
-    if not cursor:
-      break
-  return members
