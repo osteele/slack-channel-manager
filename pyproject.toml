@@ -6,7 +6,8 @@ authors = ["Oliver Steele <steele@osteele.com>"]
 
 [tool.poetry.scripts]
 create_channels = "channel_manager:create_channels_from_csv"
-write_csv = "channel_manager:write_csv"
+list_channels = "channel_manager:write_channels_csv"
+write_csv = "channel_manager:write_channels_csv"
 post_messages = "channel_manager:post_messages"
 set_pins = "channel_manager:set_pins"
 add_channel_members = "channel_manager:add_channel_members"

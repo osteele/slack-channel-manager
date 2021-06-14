@@ -4,7 +4,8 @@
 
 1. On the [Slack app management page](https://api.slack.com/apps), create a
    Slack application with these scopes: `channels:read`, `channels:write`,
-   `groups:read`, `groups:write`, `im:read`, `mpim:read`, `chat:write`, `pins:write`. Install the
+   `groups:read`, `groups:write`, `im:read`, `mpim:read`, `chat:write`, `pins:write`.
+   Install the
    application in the workspace.
 
 2. Set the `SLACK_OAUTH_TOKEN` environment variable to the value of the User
@@ -48,10 +49,10 @@ them.
 Run this command to write a list of all a workspace's public channels to `channel-ids.csv`.
 
 ```sh
-poetry run write_csv
+poetry run list_channels
 ```
 
-The output file has these columns: "Name", "Id", "Topic", "Purpose", and "Archived".
+The output file has these columns: "Name", "Id", "Topic", "Purpose", "Members", "Private", and "Archived".
 
 The cells in the Id column can be used as direct link URLs to the channels. For
 example, if the workspace is named `example-space` and a channel has an id

@@ -74,10 +74,6 @@ def create_channels_from_csv(csv_path, output_csv, dry_run, private, join, limit
 
 @click.command()
 @click.argument('csv_output', default='channel-ids.csv', type=click.Path())
-def write_csv(csv_output):
-  write_channels_csv(csv_output)
-
-
 def write_channels_csv(csv_output):
   rows = []
   for channel in list_channels():
@@ -87,7 +83,8 @@ def write_channels_csv(csv_output):
         'Id': channel['id'],
         'Topic': channel['topic']['value'],
         'Purpose': channel['purpose']['value'],
-        'Members': channel['num_members'],
+        'Members': channel.get('num_members'),
+        'Private': channel.get('is_private'),
         'Archived': channel['is_archived'],
       })
 
@@ -95,7 +92,7 @@ def write_channels_csv(csv_output):
   df.sort_values(by=['Name'], inplace=True)
   with open(csv_output, 'w') as f:
     f.write(df.to_csv(index=False))
-  print(f"Wrote channel information to {csv_output}")
+  print(f"Wrote channel information ({len(df)} channels) to {csv_output}")
 
 
 @click.command()
