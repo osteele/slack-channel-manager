@@ -1,3 +1,5 @@
+import re
+
 import click
 import pandas as pd
 
@@ -8,8 +10,9 @@ from .client import client, get_conversation_members, get_user_list, list_channe
 @click.option('--channel_limit', type=int)
 @click.option('--dry-run/--no-dry-run', default=False)
 @click.option('--verbose/--no-verbose', default=False)
+@click.option('--trace-user', type=str)
 @click.argument('member_channels_csv', type=click.File())
-def add_channel_members(member_channels_csv, channel_limit, dry_run, verbose):
+def add_channel_members(member_channels_csv, channel_limit, dry_run, trace_user, verbose):
   # load the CSV file
   df = load_csv(member_channels_csv)
   user_id_headers = {'Email', 'Member'}
@@ -17,6 +20,12 @@ def add_channel_members(member_channels_csv, channel_limit, dry_run, verbose):
     die(f"{member_channels_csv.name} must include at least one of {' and '.join(user_id_headers)}")
   if 'Email' not in df.columns:
     df['Email'] = df.Member.str.extract(r'<(.+?)(?: \(i was registered.*)?>')
+  
+  if trace_user:
+    if trace_user in list(df.Email):
+      print(f"{trace_user} is in the spreadsheet")
+    else:
+      print(f"{trace_user} is not in", ', '.join(df.Email))
 
   missing_emails_df = df[pd.isnull(df.Email)]
   if len(missing_emails_df):
@@ -24,9 +33,18 @@ def add_channel_members(member_channels_csv, channel_limit, dry_run, verbose):
     df.drop(df.index[pd.isnull(df.Email)], inplace=True)
 
   workspace_channels = list_channels()
+  invalid_channel_names = [cn
+    for cn in df.columns
+    if cn not in user_id_headers
+    if not re.match(r'[a-z0-9-_]{1,80}', cn)]
+  if invalid_channel_names:
+    print("These column names are not workspace channels names, and will be ignored:",
+      ', '.join(invalid_channel_names))
+
   channel_names = [cn
     for cn in df.columns
-    if cn not in user_id_headers]
+    if cn not in user_id_headers
+    if cn not in invalid_channel_names]
   channels = [c
     for cn in channel_names
     for c in workspace_channels
@@ -56,31 +74,24 @@ def add_channel_members(member_channels_csv, channel_limit, dry_run, verbose):
   if unregistered_invitee_emails:
     print(f"{len(unregistered_invitee_emails)} invitees are not in the workspace:", ', '.join(unregistered_invitee_emails))
 
-  # uxf = [
-  #   dict(
-  #     username=u['name'],
-  #     email=u['profile'].get('email', None),
-  #     userid=u['id'],
-  #     fullname=u['profile']['real_name'],
-  #     displayname=u['profile']['display_name'],
-  #    ) for u in get_user_list()]
-  # dfx = pd.DataFrame(uxf)
-  # print(uxf)
-  # dfx.sort_values(by=['Name'], inplace=True)
-  # with open('members.csv', 'w') as f:
-  #   f.write(dfx.to_csv(index=False))
-
   channel_invitations = []
-
   for channel in channels:
+    channel_name = channel['name']
+
     if verbose:
-      print(f"Channel #{channel['name']}:")
+      print(f"Channel #{channel_name}:")
 
     current_member_ids = get_conversation_members(channel['id'])
     current_member_emails = {users_by_id[uid]['profile']['email'].lower()
       for uid in current_member_ids
       if uid in users_by_id}
-    invited_member_emails = set(df[df[channel['name']].str.lower() == 'y'].Email.str.lower())
+    invited_member_emails = set(df[df[channel_name].str.lower() == 'y'].Email.str.lower())
+
+    if trace_user:
+      print(channel_name, {
+        'spreadsheet': trace_user in invited_member_emails,
+        'current membership': trace_user in current_member_emails,
+      })
 
     unregistered_invitee_emails = {em.lower()
       for em in invited_member_emails
@@ -113,3 +124,17 @@ def add_channel_members(member_channels_csv, channel_limit, dry_run, verbose):
         client.conversations_invite(
           channel=channel['id'],
           users=','.join(users_by_email[em.lower()]['id'] for em in emails))
+
+  # uxf = [
+  #   dict(
+  #     username=u['name'],
+  #     email=u['profile'].get('email', None),
+  #     userid=u['id'],
+  #     fullname=u['profile']['real_name'],
+  #     displayname=u['profile']['display_name'],
+  #    ) for u in get_user_list()]
+  # dfx = pd.DataFrame(uxf)
+  # print(uxf)
+  # dfx.sort_values(by=['Name'], inplace=True)
+  # with open('members.csv', 'w') as f:
+  #   f.write(dfx.to_csv(index=False))
